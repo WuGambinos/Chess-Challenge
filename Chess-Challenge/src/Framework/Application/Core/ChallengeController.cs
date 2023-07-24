@@ -23,6 +23,9 @@ namespace ChessChallenge.Application
             NicoBot,
             BaseBot,
             StarterBot,
+            RaineBot,
+            MyOldBot,
+            OdinBot,
         }
 
         // Game state
@@ -217,6 +220,9 @@ namespace ChessChallenge.Application
                 PlayerType.NicoBot => new ChessPlayer(new NicoBot(), type, GameDurationMilliseconds),
                 PlayerType.BaseBot => new ChessPlayer(new BaseBot(), type, GameDurationMilliseconds),
                 PlayerType.StarterBot => new ChessPlayer(new StarterBot(), type, GameDurationMilliseconds),
+                PlayerType.RaineBot => new ChessPlayer(new RaineBot(), type, GameDurationMilliseconds),
+                PlayerType.MyOldBot => new ChessPlayer(new MyOldBot(), type, GameDurationMilliseconds),
+                PlayerType.OdinBot => new ChessPlayer(new OdinBot(), type, GameDurationMilliseconds),
                 _ => new ChessPlayer(new HumanPlayer(boardUI), type)
             };
         }

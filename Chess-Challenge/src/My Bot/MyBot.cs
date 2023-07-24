@@ -7,11 +7,20 @@ public class MyBot : IChessBot
     int maxDepth = 4;
     int largeNum = 99999999;
     Move bestMove;
+    int mobilityWeight = 10;
 
     public Move Think(Board board, Timer timer)
     {
         NegamaxAlphaBeta(board, -largeNum, largeNum, maxDepth);
         return bestMove;
+    }
+
+    public Move[] GetEnemyMoves(Board board)
+    {
+        board.MakeMove(Move.NullMove);
+        Move[] enemyMoves = board.GetLegalMoves();
+        board.UndoMove(Move.NullMove);
+        return enemyMoves;
     }
 
     // NEEDS TO BE TWEAKED
@@ -20,6 +29,22 @@ public class MyBot : IChessBot
         PieceList[] pl = board.GetAllPieceLists();
         int whiteScore = 0;
         int blackScore = 0;
+        int whiteMobility = 0;
+        int blackMobility = 0;
+
+        Move[] moves = board.GetLegalMoves();
+        Move[] enemyMoves = GetEnemyMoves(board);
+
+        if (board.IsWhiteToMove)
+        {
+            whiteMobility += moves.Length;
+            blackMobility -= enemyMoves.Length;
+        }
+        else
+        {
+            blackMobility -= moves.Length;
+            whiteMobility += enemyMoves.Length;
+        }
 
         for (int i = 0; i < piece_weights.Length * 2; i++)
         {
@@ -35,16 +60,20 @@ public class MyBot : IChessBot
         }
 
         int materialScore = (whiteScore + blackScore);
+        int mobilityScore = mobilityWeight * (whiteMobility + blackMobility);
         int sideToMove = board.IsWhiteToMove ? 1 : -1;
-        return materialScore * sideToMove;
+        return (materialScore + mobilityScore) * sideToMove;
     }
 
-    public void OrderMoves(Move[] moves) {
+    public void OrderMoves(Move[] moves)
+    {
         int[] scores = new int[moves.Length];
 
-        for(int i = 0; i < scores.Length; i++){
+        for (int i = 0; i < scores.Length; i++)
+        {
             Move move = moves[i];
-            if (move.IsCapture) {
+            if (move.IsCapture)
+            {
                 scores[i] += piece_weights[(int)move.CapturePieceType - 1] - piece_weights[(int)move.MovePieceType - 1] / 10;
             }
 
@@ -76,7 +105,8 @@ public class MyBot : IChessBot
             int eval = -NegamaxAlphaBeta(board, -beta, -alpha, depth - 1);
             board.UndoMove(move);
 
-            if(eval > maxEval){
+            if (eval > maxEval)
+            {
                 maxEval = eval;
                 if (depth == maxDepth) bestMove = move;
             }
