@@ -3,8 +3,8 @@ using System;
 
 public class MyBot : IChessBot
 {
-    readonly int[] weights = { 100, 320, 330, 500, 900, 20000 };
-    int maxDepth = 3;
+    readonly int[] piece_weights = { 100, 320, 330, 500, 900, 20000 };
+    int maxDepth = 4;
     int largeNum = 99999999;
     Move bestMove;
 
@@ -21,19 +21,15 @@ public class MyBot : IChessBot
         int whiteScore = 0;
         int blackScore = 0;
 
-
-        if (board.IsInCheckmate())
-            return board.IsWhiteToMove ? -largeNum : largeNum;
-
-        for (int i = 0; i < weights.Length * 2; i++)
+        for (int i = 0; i < piece_weights.Length * 2; i++)
         {
             if (i < 6)
             {
-                whiteScore += (weights[i] * pl[i].Count);
+                whiteScore += (piece_weights[i] * pl[i].Count);
             }
             else
             {
-                blackScore -= (weights[i - 6] * pl[i].Count);
+                blackScore -= (piece_weights[i - 6] * pl[i].Count);
 
             }
         }
@@ -43,17 +39,35 @@ public class MyBot : IChessBot
         return materialScore * sideToMove;
     }
 
+    public void OrderMoves(Move[] moves) {
+        int[] scores = new int[moves.Length];
+
+        for(int i = 0; i < scores.Length; i++){
+            Move move = moves[i];
+            if (move.IsCapture) {
+                scores[i] += piece_weights[(int)move.CapturePieceType - 1] - piece_weights[(int)move.MovePieceType - 1] / 10;
+            }
+
+            scores[i] *= -1;
+        }
+
+        Array.Sort(scores, moves);
+    }
+
     int NegamaxAlphaBeta(Board board, int alpha, int beta, int depth)
     {
 
-        if(board.IsDraw())
-            return 0;
 
         Move[] moves = board.GetLegalMoves();
+        if (board.IsInCheckmate())
+            return board.IsWhiteToMove ? -largeNum : largeNum;
+
         if (depth == 0 || moves.Length == 0)
         {
             return Evaluate(board);
         }
+
+        //OrderMoves(moves);
 
         int maxEval = -largeNum;
         foreach (Move move in moves)
