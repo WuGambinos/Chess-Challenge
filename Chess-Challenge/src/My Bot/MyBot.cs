@@ -91,6 +91,8 @@ public class MyBot : IChessBot
 
         Move[] moves = board.GetLegalMoves();
 
+        OrderMoves(moves);
+
         if (depth == 0 || moves.Length == 0)
         {
             if (board.IsInCheckmate())
