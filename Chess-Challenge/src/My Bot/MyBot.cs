@@ -32,7 +32,6 @@ public class MyBot : IChessBot
         int whiteMobility = 0;
         int blackMobility = 0;
 
-        /*
         Move[] moves = board.GetLegalMoves();
         Move[] enemyMoves = GetEnemyMoves(board);
 
@@ -46,7 +45,6 @@ public class MyBot : IChessBot
             blackMobility -= moves.Length;
             whiteMobility += enemyMoves.Length;
         }
-        */
 
         for (int i = 0; i < piece_weights.Length * 2; i++)
         {
@@ -64,8 +62,7 @@ public class MyBot : IChessBot
         int materialScore = (whiteScore + blackScore);
         int mobilityScore = mobilityWeight * (whiteMobility + blackMobility);
         int sideToMove = board.IsWhiteToMove ? 1 : -1;
-        //return (materialScore + mobilityScore) * sideToMove;
-        return materialScore;
+        return (materialScore + mobilityScore) * sideToMove;
     }
 
     public void OrderMoves(Move[] moves)
@@ -89,15 +86,15 @@ public class MyBot : IChessBot
     int NegamaxAlphaBeta(Board board, int alpha, int beta, int depth)
     {
 
+        if (board.IsDraw())
+            return 0;
 
         Move[] moves = board.GetLegalMoves();
 
         if (depth == 0 || moves.Length == 0)
         {
-            /*
             if (board.IsInCheckmate())
-                return -largeNum;
-                */
+                return -9999999;
 
             return Evaluate(board);
         }
