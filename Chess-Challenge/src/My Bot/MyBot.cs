@@ -4,7 +4,7 @@ using System;
 public class MyBot : IChessBot
 {
     readonly int[] piece_weights = { 100, 320, 330, 500, 900, 20000 };
-    int maxDepth = 4;
+    int maxDepth = 3;
     int largeNum = 99999999;
     Move bestMove;
     int mobilityWeight = 10;
@@ -32,6 +32,7 @@ public class MyBot : IChessBot
         int whiteMobility = 0;
         int blackMobility = 0;
 
+        /*
         Move[] moves = board.GetLegalMoves();
         Move[] enemyMoves = GetEnemyMoves(board);
 
@@ -45,6 +46,7 @@ public class MyBot : IChessBot
             blackMobility -= moves.Length;
             whiteMobility += enemyMoves.Length;
         }
+        */
 
         for (int i = 0; i < piece_weights.Length * 2; i++)
         {
@@ -62,7 +64,8 @@ public class MyBot : IChessBot
         int materialScore = (whiteScore + blackScore);
         int mobilityScore = mobilityWeight * (whiteMobility + blackMobility);
         int sideToMove = board.IsWhiteToMove ? 1 : -1;
-        return (materialScore + mobilityScore) * sideToMove;
+        //return (materialScore + mobilityScore) * sideToMove;
+        return materialScore;
     }
 
     public void OrderMoves(Move[] moves)
@@ -88,15 +91,16 @@ public class MyBot : IChessBot
 
 
         Move[] moves = board.GetLegalMoves();
-        if (board.IsInCheckmate())
-            return board.IsWhiteToMove ? -largeNum : largeNum;
 
         if (depth == 0 || moves.Length == 0)
         {
+            /*
+            if (board.IsInCheckmate())
+                return -largeNum;
+                */
+
             return Evaluate(board);
         }
-
-        //OrderMoves(moves);
 
         int maxEval = -largeNum;
         foreach (Move move in moves)

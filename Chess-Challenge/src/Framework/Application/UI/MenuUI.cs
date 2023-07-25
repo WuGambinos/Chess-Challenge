@@ -93,23 +93,23 @@ namespace ChessChallenge.Application
 
             buttonPos = UIHelper.Scale(new Vector2(405, 210 + 65 * 2));
             buttonSize = UIHelper.Scale(new Vector2(200, 55));
-            if (NextButtonInRow("MyBot vs StarterBot", ref buttonPos, spacing, buttonSize))
+            if (NextButtonInRow("MyBot vs NegamaxBot", ref buttonPos, spacing, buttonSize))
             {
-                controller.StartNewBotMatch(ChallengeController.PlayerType.MyBot, ChallengeController.PlayerType.StarterBot);
+                controller.StartNewBotMatch(ChallengeController.PlayerType.MyBot, ChallengeController.PlayerType.NegamaxBot);
             }
 
             buttonPos = UIHelper.Scale(new Vector2(405, 210 + 65 * 3));
             buttonSize = UIHelper.Scale(new Vector2(200, 55));
-            if (NextButtonInRow("NicoBot vs StarterBot", ref buttonPos, spacing, buttonSize))
+            if (NextButtonInRow("NicoBot vs NegamaxBot", ref buttonPos, spacing, buttonSize))
             {
-                controller.StartNewBotMatch(ChallengeController.PlayerType.NicoBot, ChallengeController.PlayerType.StarterBot);
+                controller.StartNewBotMatch(ChallengeController.PlayerType.NicoBot, ChallengeController.PlayerType.NegamaxBot);
             }
 
             buttonPos = UIHelper.Scale(new Vector2(405, 210 + 65 * 4));
             buttonSize = UIHelper.Scale(new Vector2(200, 55));
-            if (NextButtonInRow("EvilBot vs StarterBot", ref buttonPos, spacing, buttonSize))
+            if (NextButtonInRow("EvilBot vs NegamaxBot", ref buttonPos, spacing, buttonSize))
             {
-                controller.StartNewBotMatch(ChallengeController.PlayerType.EvilBot, ChallengeController.PlayerType.StarterBot);
+                controller.StartNewBotMatch(ChallengeController.PlayerType.EvilBot, ChallengeController.PlayerType.NegamaxBot);
             }
 
             buttonPos = UIHelper.Scale(new Vector2(405, 210 + 65 * 5));
