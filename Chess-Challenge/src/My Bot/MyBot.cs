@@ -8,51 +8,82 @@ public class MyBot : IChessBot
     int largeNum = 99999999;
     Move bestMove;
     int mobilityWeight = 10;
+    private const sbyte EXACT = 0, LOWERBOUND = -1, UPPERBOUND = 1, INVALID = -2;
 
-    private static readonly ulong[,] packedScores =
+
+    public struct Transposition 
     {
-        {0x31CDE1EBFFEBCE00, 0x31D7D7F5FFF5D800, 0x31E1D7F5FFF5E200, 0x31EBCDFAFFF5E200},
-        {0x31E1E1F604F5D80A, 0x13EBD80009FFEC0A, 0x13F5D8000A000014, 0x13FFCE000A00001E},
-        {0x31E1E1F5FAF5E232, 0x13F5D80000000032, 0x0013D80500050A32, 0x001DCE05000A0F32},
-        {0x31E1E1FAFAF5E205, 0x13F5D80000050505, 0x001DD80500050F0A, 0xEC27CE05000A1419},
-        {0x31E1EBFFFAF5E200, 0x13F5E20000000000, 0x001DE205000A0F00, 0xEC27D805000A1414},
-        {0x31E1F5F5FAF5E205, 0x13F5EC05000A04FB, 0x0013EC05000A09F6, 0x001DEC05000A0F00},
-        {0x31E213F5FAF5D805, 0x13E214000004EC0A, 0x140000050000000A, 0x14000000000004EC},
-        {0x31CE13EBFFEBCE00, 0x31E21DF5FFF5D800, 0x31E209F5FFF5E200, 0x31E1FFFB04F5E200},
+        public ulong zobristHash = 0;
+        public int evaluation = 0;
+        public byte depth= 0;
+        public sbyte flag = INVALID;
+        public Transposition(ulong zHash, int eval, byte d) {
+            zobristHash = zHash;
+            evaluation = eval;
+            depth = d;
+            flag = INVALID;
+        }
     };
 
-    //enumeration to keep track externally of
-    //which byte is for which scores
-    private enum ScoreType { Pawn, Knight, Bishop, Rook, Queen, King, KingEndgame, KingHunt };
+    private const ulong k_TpMask = 0x8FFFFF;
+    private Transposition[] m_TPTable = new Transposition[k_TpMask + 1];
 
-    //Assuming you put your packed data table into a table called packedScores.
-    private int GetPieceBonusScore(ScoreType type, bool isWhite, int rank, int file)
-    {
-        //Because the arrays are 8x4, we need to mirror across the files.
-        if (file > 3) file = 7 - file;
-        //Additionally, if we're checking black pieces, we need to flip the board vertically.
-        if (!isWhite) rank = 7 - rank;
-        int unpackedData = 0;
-        ulong bytemask = 0xFF;
-        //first we shift the mask to select the correct byte              ↓
-        //We then bitwise-and it with PackedScores            ↓
-        //We finally have to "un-shift" the resulting data to properly convert back       ↓
-        //We convert the result to an sbyte, then to an int, to ensure it converts properly.
-        unpackedData = (int)(sbyte)((packedScores[rank, file] & (bytemask << (int)type)) >> (int)type);
-        //inverting eval scores for black pieces
-        if (!isWhite) unpackedData *= -1;
-        return unpackedData;
+    Transposition Lookup(ulong zHash) {
+        return m_TPTable[zHash & k_TpMask];
     }
+
+    // MVV_VLA[victim][attacker]
+    int[,] MVV_LVA  = 
+    {
+        {0, 0, 0, 0, 0, 0, 0},       // victim None, attacker K, Q, R, B, N, P, None
+        {10, 11, 12, 13, 14, 15, 0}, // victim P, attacker K, Q, R, B, N, P, None
+        {20, 21, 22, 23, 24, 25, 0}, // victim N, attacker K, Q, R, B, N, P, None
+        {30, 31, 32, 33, 34, 35, 0}, // victim B, attacker K, Q, R, B, N, P, None
+        {40, 41, 42, 43, 44, 45, 0}, // victim R, attacker K, Q, R, B, N, P, None
+        {50, 51, 52, 53, 54, 55, 0}, // victim Q, attacker K, Q, R, B, N, P, None
+        {0, 0, 0, 0, 0, 0, 0},       // victim K, attacker K, Q, R, B, N, P, None
+    };
+
+    /*
+    int iterate_board(Board board, PieceType p, bool isWhiteMove) {
+        int score = 0;
+            ulong bb = board.GetPieceBitboard(p, isWhiteMove);
+
+            int i = 0;
+            while (bb > 0)
+            {
+                ulong bit = bb & 1;
+                if (bit == 1) {
+                    if (isWhiteMove)
+                    {
+                        int square = i;
+                        int file = square % 8;
+                        int rank = square / 8;
+                        ScoreType st = (ScoreType)((int)p - 1);
+                        score += GetPieceBonusScore(st, isWhiteMove, rank, file);
+                    }
+                    else {
+                        int square = i ^ 56;
+                        int file = square % 8;
+                        int rank = square / 8;
+                        ScoreType st = (ScoreType)((int)p - 1);
+                        score += GetPieceBonusScore(st,isWhiteMove, rank, file);
+                    }
+                }
+                // Reset LSB
+               bb &= bb - 1;
+               i += 1;
+            }
+        return score;
+    }
+    */
 
     public Move Think(Board board, Timer timer)
     {
-        /*
         for (int i = 0; i < maxDepth; i++)
         {
             NegamaxAlphaBeta(board, -largeNum, largeNum, maxDepth);
         }
-        */
-        NegamaxAlphaBeta(board, -largeNum, largeNum, maxDepth);
         return bestMove;
     }
 
@@ -68,8 +99,6 @@ public class MyBot : IChessBot
     int Evaluate(Board board)
     {
         PieceList[] pl = board.GetAllPieceLists();
-        int whiteScore = 0;
-        int blackScore = 0;
         int whiteMobility = 0;
         int blackMobility = 0;
 
@@ -79,130 +108,6 @@ public class MyBot : IChessBot
 
         var values = Enum.GetValues(typeof(PieceType));
         bool isWhiteMove = board.IsWhiteToMove;
-
-        // Iterate over pieces
-        foreach (var value in values)
-        {
-            ScoreType st = (ScoreType)value;
-            if (st == ScoreType.Pawn)
-            {
-                ulong bb = board.GetPieceBitboard(PieceType.Pawn, isWhiteMove);
-
-                // Popcnt
-                int count = 0;
-                while (bb > 0)
-                {
-                    count++;
-                    ulong bit = bb & 1;
-                    if (isWhiteMove)
-                    {
-                        Console.WriteLine("BIT: " + bit + " SQUARE: " + count);
-                    }
-                    // Reset LSB
-                    bb &= bb - 1;
-                }
-
-                if (isWhiteMove)
-                {
-                    whiteScore += count;
-                }
-                else
-                {
-                    blackScore -= count;
-                }
-
-            }
-
-            if (st == ScoreType.Knight)
-            {
-                ulong bb = board.GetPieceBitboard(PieceType.Knight, isWhiteMove);
-                // Popcnt
-                int count = 0;
-                while (bb > 0)
-                {
-                    count++;
-                    // Reset LSB
-                    bb &= bb - 1;
-                }
-
-                if (isWhiteMove)
-                {
-                    whiteScore += count;
-                }
-                else
-                {
-                    blackScore -= count;
-                }
-            }
-
-            if (st == ScoreType.Bishop)
-            {
-                ulong bb = board.GetPieceBitboard(PieceType.Bishop, isWhiteMove);
-                // Popcnt
-                int count = 0;
-                while (bb > 0)
-                {
-                    count++;
-                    // Reset LSB
-                    bb &= bb - 1;
-                }
-
-                if (isWhiteMove)
-                {
-                    whiteScore += count;
-                }
-                else
-                {
-                    blackScore -= count;
-                }
-            }
-
-            if (st == ScoreType.Rook)
-            {
-                ulong bb = board.GetPieceBitboard(PieceType.Rook, isWhiteMove);
-                // Popcnt
-                int count = 0;
-                while (bb > 0)
-                {
-                    count++;
-                    // Reset LSB
-                    bb &= bb - 1;
-                }
-
-                if (isWhiteMove)
-                {
-                    whiteScore += count;
-                }
-                else
-                {
-                    blackScore -= count;
-                }
-            }
-
-            if (st == ScoreType.Queen)
-            {
-                ulong bb = board.GetPieceBitboard(PieceType.Queen, isWhiteMove);
-                // Popcnt
-                int count = 0;
-                while (bb > 0)
-                {
-                    count++;
-                    // Reset LSB
-                    bb &= bb - 1;
-                }
-
-                if (isWhiteMove)
-                {
-                    whiteScore += count;
-                }
-                else
-                {
-                    blackScore -= count;
-                }
-            }
-        }
-
-        /*
         if (board.IsWhiteToMove)
         {
             whiteMobility += currentMoves.Length;
@@ -214,6 +119,8 @@ public class MyBot : IChessBot
             whiteMobility += enemyMoves.Length;
         }
 
+        int whiteScore = 0;
+        int blackScore = 0;
         for (int i = 0; i < piece_weights.Length * 2; i++)
         {
             if (i < 6)
@@ -226,10 +133,9 @@ public class MyBot : IChessBot
 
             }
         }
-        */
 
-        int materialScore = (whiteScore + blackScore);
         int mobilityScore = mobilityWeight * (whiteMobility + blackMobility);
+        int materialScore = (whiteScore + blackScore);
         int sideToMove = board.IsWhiteToMove ? 1 : -1;
         return (materialScore + mobilityScore) * sideToMove;
     }
@@ -243,7 +149,8 @@ public class MyBot : IChessBot
             Move move = moves[i];
             if (move.IsCapture)
             {
-                scores[i] += piece_weights[(int)move.CapturePieceType - 1] - piece_weights[(int)move.MovePieceType - 1] / 10;
+                int value = MVV_LVA[(int)move.CapturePieceType, (int)move.MovePieceType];
+                scores[i] += value;
             }
 
             scores[i] *= -1;
@@ -256,7 +163,7 @@ public class MyBot : IChessBot
     {
 
         if (board.IsInsufficientMaterial() || board.IsRepeatedPosition() || board.FiftyMoveCounter >= 100)
-            return 0;
+            return -20;
 
         Span<Move> moves = stackalloc Move[256];
         board.GetLegalMovesNonAlloc(ref moves);
@@ -268,6 +175,7 @@ public class MyBot : IChessBot
             if (board.IsInCheckmate())
                 return -9999999;
 
+            //return Quiesce(board, alpha, beta);
             return Evaluate(board);
         }
 
@@ -291,7 +199,7 @@ public class MyBot : IChessBot
         }
         return maxEval;
     }
-    /*
+
     int Quiesce(Board board, int alpha, int beta)
     {
         int stand_pat = Evaluate(board);
@@ -302,7 +210,8 @@ public class MyBot : IChessBot
             alpha = stand_pat;
 
         Span<Move> captures = stackalloc Move[256];
-        board.GetLegalMovesNonAlloc(ref captures);
+        board.GetLegalMovesNonAlloc(ref captures, true);
+        OrderMoves(captures);
 
         foreach (Move capture in captures)
         {
@@ -318,6 +227,5 @@ public class MyBot : IChessBot
         }
         return alpha;
     }
-    */
 }
 
